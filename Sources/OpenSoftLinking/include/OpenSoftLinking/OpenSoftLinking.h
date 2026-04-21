@@ -43,6 +43,6 @@ void *_osl_dlopen_audited(const char *const *paths);
 }
 #endif
 
-/* #include <OpenSoftLinking/SoftLinking.h>  (added in Task 2.1) */
+#include <OpenSoftLinking/SoftLinking.h>
 
 #endif /* OPENSOFTLINKING_OPENSOFTLINKING_H */
