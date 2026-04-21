@@ -76,11 +76,6 @@ per-path `dlerror()` messages that the caller must `free()`.
 LGPL-2.1. The `SoftLinking.h` macro suite is derived from WebKit's
 `Source/WTF/wtf/cocoa/SoftLinking.h` (LGPL-2.1). See `LICENSE`.
 
-## Reverse-engineering notes
-
-Design decisions and IDA evidence live in
-`docs/superpowers/specs/2026-04-21-opensoftlinking-design.md`.
-
 ## Known limitations
 
 - `calloc` failure on the slow-path (error aggregation) triggers

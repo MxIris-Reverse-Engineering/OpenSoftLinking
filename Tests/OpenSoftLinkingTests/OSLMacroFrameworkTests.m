@@ -12,9 +12,7 @@ OPEN_SOFT_LINK_FRAMEWORK(Foundation)
 /* OPEN_SOFT_LINK_FRAMEWORK_OPTIONAL(Foundation) — commented out because both
  * macros expand to the same static void *FoundationLibrary(void) symbol,
  * causing a duplicate-function-definition compile error in a single TU.
- * The plan spec acknowledges this collision in the test body comment
- * ("consumers pick ONE variant per framework per TU"). The OPTIONAL variant
- * is exercised in Phase-2 follow-up tasks using a genuinely-absent framework.
+ * Consumers pick ONE variant per framework per TU.
  */
 
 @interface OSLMacroFrameworkTests : XCTestCase
@@ -36,9 +34,7 @@ OPEN_SOFT_LINK_FRAMEWORK(Foundation)
     /* FRAMEWORK_OPTIONAL(Foundation) defines a second FoundationLibrary — but
      * since both macros expand to the same symbol name inside a single TU,
      * consumers pick ONE variant per framework per TU. This test instead
-     * verifies the non-optional variant above is still accessible; the
-     * optional variant is exercised in Phase-2 follow-up tasks that use a
-     * genuinely-absent framework. */
+     * verifies the non-optional variant above is still accessible. */
     XCTAssertTrue(FoundationLibrary() != NULL);
 }
 

@@ -3,7 +3,6 @@
 //  OpenSoftLinking
 //
 //  Open-source reimplementation of Apple's private SoftLinking.framework.
-//  See docs/superpowers/specs/2026-04-21-opensoftlinking-design.md
 //
 
 #ifndef OPENSOFTLINKING_OPENSOFTLINKING_H

@@ -5,8 +5,7 @@
 //  WebKit-derived soft-linking macros, prefixed OPEN_ and routed through
 //  the _osl_dlopen runtime. Adapted from:
 //  https://github.com/WebKit/WebKit/blob/main/Source/WTF/wtf/cocoa/SoftLinking.h
-//  (LGPL-2.1). Transformation rules documented in
-//  docs/superpowers/specs/2026-04-21-opensoftlinking-design.md §5.1.
+//  (LGPL-2.1).
 //
 
 #ifndef OPENSOFTLINKING_SOFTLINKING_H
@@ -374,16 +373,6 @@ void *_osl_dlopen(const char *const *paths, char **errorMessage);
         return ptr;                                                           \
     }                                                                         \
     static inline type get##name(void) { return *get##name##Ptr(); }
-
-/* All macro families complete:
- *  - Framework/Library loaders (Task 2.1)
- *  - Class macros (Task 2.2)
- *  - Function macros (Task 2.3)
- *  - Pointer macros (Task 2.4)
- *  - Constant macros (Task 2.5)
- *  - Variable macros (Task 2.6)
- *  - Header/Source split variants (Task 2.7)
- */
 
 /* ---------------------------------------------------------------------------
  * Header / Source split forms
