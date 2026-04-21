@@ -375,12 +375,147 @@ void *_osl_dlopen(const char *const *paths, char **errorMessage);
     }                                                                         \
     static inline type get##name(void) { return *get##name##Ptr(); }
 
-/* Further macros added by subsequent tasks:
- *  - Function macros: Task 2.3
- *  - Pointer macros: Task 2.4
- *  - Constant macros: Task 2.5
- *  - Variable macros: Task 2.6
- *  - Header/Source split variants: Task 2.7
+/* All macro families complete:
+ *  - Framework/Library loaders (Task 2.1)
+ *  - Class macros (Task 2.2)
+ *  - Function macros (Task 2.3)
+ *  - Pointer macros (Task 2.4)
+ *  - Constant macros (Task 2.5)
+ *  - Variable macros (Task 2.6)
+ *  - Header/Source split variants (Task 2.7)
  */
+
+/* ---------------------------------------------------------------------------
+ * Header / Source split forms
+ *
+ * Use these when a symbol must be shared across multiple translation units:
+ *   - IN HEADER: OPEN_SOFT_LINK_FRAMEWORK_FOR_HEADER(prefix, framework)
+ *   - IN SOURCE: OPEN_SOFT_LINK_FRAMEWORK_FOR_SOURCE(prefix, framework)
+ * The `prefix` parameter disambiguates multiple soft-linked frameworks in
+ * the same header.
+ * -------------------------------------------------------------------------*/
+
+#define OPEN_SOFT_LINK_FRAMEWORK_FOR_HEADER(prefix, framework)                \
+    void *prefix##framework##Library(void);
+
+#define OPEN_SOFT_LINK_FRAMEWORK_FOR_SOURCE(prefix, framework)                \
+    void *prefix##framework##Library(void)                                    \
+    {                                                                         \
+        static void *frameworkLibrary;                                        \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            static const char *const paths[] = {                              \
+                "/System/Library/Frameworks/" #framework ".framework/" #framework, \
+                "/System/Library/Frameworks/" #framework ".framework/Contents/MacOS/" #framework, \
+                NULL                                                          \
+            };                                                                \
+            char *error = NULL;                                               \
+            frameworkLibrary = _osl_dlopen(paths, &error);                    \
+            OSL_RELEASE_ASSERT(frameworkLibrary != NULL,                      \
+                "OpenSoftLinking: failed to load %{public}s: %{public}s",    \
+                #framework, error ? error : "unknown");                       \
+        });                                                                   \
+        return frameworkLibrary;                                              \
+    }
+
+#define OPEN_SOFT_LINK_PRIVATE_FRAMEWORK_FOR_HEADER(prefix, framework)        \
+    OPEN_SOFT_LINK_FRAMEWORK_FOR_HEADER(prefix, framework)
+
+#define OPEN_SOFT_LINK_PRIVATE_FRAMEWORK_FOR_SOURCE(prefix, framework)        \
+    void *prefix##framework##Library(void)                                    \
+    {                                                                         \
+        static void *frameworkLibrary;                                        \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            static const char *const paths[] = {                              \
+                "/System/Library/PrivateFrameworks/" #framework ".framework/" #framework, \
+                "/System/Library/PrivateFrameworks/" #framework ".framework/Contents/MacOS/" #framework, \
+                NULL                                                          \
+            };                                                                \
+            char *error = NULL;                                               \
+            frameworkLibrary = _osl_dlopen(paths, &error);                    \
+            OSL_RELEASE_ASSERT(frameworkLibrary != NULL,                      \
+                "OpenSoftLinking: failed to load private %{public}s: %{public}s", \
+                #framework, error ? error : "unknown");                       \
+        });                                                                   \
+        return frameworkLibrary;                                              \
+    }
+
+#define OPEN_SOFT_LINK_CLASS_FOR_HEADER(prefix, className)                    \
+    Class prefix##get##className##Class(void);
+
+#define OPEN_SOFT_LINK_CLASS_FOR_SOURCE(prefix, framework, className)         \
+    Class prefix##get##className##Class(void)                                 \
+    {                                                                         \
+        static Class cls;                                                     \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            (void)prefix##framework##Library();                               \
+            cls = objc_getClass(#className);                                  \
+            OSL_RELEASE_ASSERT(cls != Nil,                                    \
+                "OpenSoftLinking: class %{public}s not found in %{public}s", \
+                #className, #framework);                                      \
+        });                                                                   \
+        return cls;                                                           \
+    }
+
+#define OPEN_SOFT_LINK_FUNCTION_FOR_HEADER(prefix, framework, functionName, resultType, parameterDeclarations) \
+    resultType prefix##functionName##_soft parameterDeclarations;
+
+#define OPEN_SOFT_LINK_FUNCTION_FOR_SOURCE(prefix, framework, functionName, resultType, parameterDeclarations, parameterNames) \
+    resultType prefix##functionName##_soft parameterDeclarations              \
+    {                                                                         \
+        static resultType (*ptr) parameterDeclarations;                       \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            ptr = (resultType (*) parameterDeclarations)                      \
+                dlsym(prefix##framework##Library(), #functionName);           \
+            OSL_RELEASE_ASSERT(ptr != NULL,                                   \
+                "OpenSoftLinking: function %{public}s not found in %{public}s", \
+                #functionName, #framework);                                   \
+        });                                                                   \
+        return ptr parameterNames;                                            \
+    }
+
+#define OPEN_SOFT_LINK_POINTER_FOR_HEADER(prefix, framework, name, type)      \
+    type prefix##get##name(void);
+
+#define OPEN_SOFT_LINK_POINTER_FOR_SOURCE(prefix, framework, name, type)      \
+    type prefix##get##name(void)                                              \
+    {                                                                         \
+        static __unsafe_unretained type value;                                \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            void *symbol = dlsym(prefix##framework##Library(), #name);        \
+            OSL_RELEASE_ASSERT(symbol != NULL,                                \
+                "OpenSoftLinking: pointer %{public}s not found in %{public}s", \
+                #name, #framework);                                           \
+            value = *(__unsafe_unretained type *)symbol;                      \
+        });                                                                   \
+        return value;                                                         \
+    }
+
+#define OPEN_SOFT_LINK_CONSTANT_FOR_HEADER(prefix, framework, name, type)     \
+    OPEN_SOFT_LINK_POINTER_FOR_HEADER(prefix, framework, name, type)
+
+#define OPEN_SOFT_LINK_CONSTANT_FOR_SOURCE(prefix, framework, name, type)     \
+    OPEN_SOFT_LINK_POINTER_FOR_SOURCE(prefix, framework, name, type)
+
+#define OPEN_SOFT_LINK_VARIABLE_FOR_HEADER(prefix, framework, name, type)     \
+    type prefix##get##name(void);
+
+#define OPEN_SOFT_LINK_VARIABLE_FOR_SOURCE(prefix, framework, name, type)     \
+    type prefix##get##name(void)                                              \
+    {                                                                         \
+        static __unsafe_unretained type *ptr;                                 \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            ptr = (__unsafe_unretained type *)dlsym(prefix##framework##Library(), #name); \
+            OSL_RELEASE_ASSERT(ptr != NULL,                                   \
+                "OpenSoftLinking: variable %{public}s not found in %{public}s", \
+                #name, #framework);                                           \
+        });                                                                   \
+        return *ptr;                                                          \
+    }
 
 #endif /* OPENSOFTLINKING_SOFTLINKING_H */
