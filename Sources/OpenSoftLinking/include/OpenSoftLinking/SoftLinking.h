@@ -330,6 +330,32 @@ void *_osl_dlopen(const char *const *paths, char **errorMessage);
         return value;                                                         \
     }
 
+/* ---------------------------------------------------------------------------
+ * Constant macros (same semantics as pointer: dlsym + single deref)
+ * -------------------------------------------------------------------------*/
+
+#define OPEN_SOFT_LINK_CONSTANT(framework, name, type)                        \
+    OPEN_SOFT_LINK_POINTER(framework, name, type)
+
+#define OPEN_SOFT_LINK_CONSTANT_MAY_FAIL(framework, name, type)               \
+    static BOOL canLoad_##framework##_##name(void)                            \
+    {                                                                         \
+        static BOOL present;                                                  \
+        static dispatch_once_t onceToken;                                     \
+        static __unsafe_unretained type value;                                \
+        dispatch_once(&onceToken, ^{                                          \
+            void *symbol = dlsym(framework##Library(), #name);                \
+            if (symbol != NULL) {                                             \
+                present = YES;                                                \
+                value = *(__unsafe_unretained type *)symbol;                  \
+            }                                                                 \
+        });                                                                   \
+        return present;                                                       \
+    }
+
+#define OPEN_SOFT_LINK_CONSTANT_OPTIONAL(framework, name, type)               \
+    OPEN_SOFT_LINK_POINTER_OPTIONAL(framework, name, type)
+
 /* Further macros added by subsequent tasks:
  *  - Function macros: Task 2.3
  *  - Pointer macros: Task 2.4
