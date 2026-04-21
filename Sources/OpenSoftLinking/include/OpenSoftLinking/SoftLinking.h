@@ -356,6 +356,25 @@ void *_osl_dlopen(const char *const *paths, char **errorMessage);
 #define OPEN_SOFT_LINK_CONSTANT_OPTIONAL(framework, name, type)               \
     OPEN_SOFT_LINK_POINTER_OPTIONAL(framework, name, type)
 
+/* ---------------------------------------------------------------------------
+ * Variable macros (dlsym once, deref each access)
+ * -------------------------------------------------------------------------*/
+
+#define OPEN_SOFT_LINK_VARIABLE(framework, name, type)                        \
+    static __unsafe_unretained type *get##name##Ptr(void)                     \
+    {                                                                         \
+        static __unsafe_unretained type *ptr;                                 \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            ptr = (__unsafe_unretained type *)dlsym(framework##Library(), #name); \
+            OSL_RELEASE_ASSERT(ptr != NULL,                                   \
+                "OpenSoftLinking: variable %{public}s not found in %{public}s", \
+                #name, #framework);                                           \
+        });                                                                   \
+        return ptr;                                                           \
+    }                                                                         \
+    static inline type get##name(void) { return *get##name##Ptr(); }
+
 /* Further macros added by subsequent tasks:
  *  - Function macros: Task 2.3
  *  - Pointer macros: Task 2.4
