@@ -104,4 +104,22 @@
     free(err);
 }
 
+- (void)test_dlopen_audited_equivalentToDlopen_withNullError {
+    const char *const paths[] = {
+        "/System/Library/Frameworks/Foundation.framework/Foundation",
+        NULL
+    };
+    void *a = _osl_dlopen(paths, NULL);
+    void *b = _osl_dlopen_audited(paths);
+    XCTAssertTrue(a != NULL);
+    XCTAssertTrue(b != NULL);
+    XCTAssertEqual(a, b, "both calls should return identical dyld handle");
+}
+
+- (void)test_dlopen_audited_onFail_returnsNull {
+    const char *const paths[] = { "/does/not/exist", NULL };
+    void *h = _osl_dlopen_audited(paths);
+    XCTAssertTrue(h == NULL);
+}
+
 @end
