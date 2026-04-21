@@ -94,4 +94,14 @@
     XCTAssertEqual((void *)err, (void *)0xDEADBEEF, "err must be untouched on success");
 }
 
+- (void)test_dlopen_emptyPathList_withErrorMessage_returnsEmptyString {
+    const char *const paths[] = { NULL };
+    char *err = NULL;
+    void *handle = _osl_dlopen(paths, &err);
+    XCTAssertTrue(handle == NULL);
+    XCTAssertTrue(err != NULL, "Expected calloc-allocated empty string");
+    XCTAssertEqual(err[0], '\0', "Expected empty string for empty path list");
+    free(err);
+}
+
 @end

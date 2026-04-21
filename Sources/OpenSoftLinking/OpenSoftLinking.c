@@ -56,6 +56,9 @@ void *_osl_dlopen(const char *const *paths, char **errorMessage)
         }
         const char *raw = dlerror();
         char *copied = strdup(raw ? raw : "unknown");
+        if (copied == NULL) {
+            abort();
+        }
         errors[i] = copied;
         totalLength += strlen(copied) + 1;  /* +1 for '\n' or NUL */
         os_log_info(OS_LOG_DEFAULT,
