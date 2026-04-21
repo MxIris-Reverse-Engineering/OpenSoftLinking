@@ -232,6 +232,73 @@ void *_osl_dlopen(const char *const *paths, char **errorMessage);
         return cls;                                                           \
     }
 
+/* ---------------------------------------------------------------------------
+ * Function macros
+ * -------------------------------------------------------------------------*/
+
+/* Non-optional soft-link. Aborts on missing symbol.
+ *
+ * Expansion creates <functionName>_soft(params) which on first call resolves
+ * the symbol via dlsym() and thereafter calls it directly.
+ */
+#define OPEN_SOFT_LINK(framework, functionName, resultType, parameterDeclarations, parameterNames) \
+    static resultType (*functionName##_soft_ptr) parameterDeclarations;                            \
+    static resultType functionName##_soft parameterDeclarations                                    \
+    {                                                                                              \
+        static dispatch_once_t onceToken;                                                          \
+        dispatch_once(&onceToken, ^{                                                               \
+            functionName##_soft_ptr = (resultType (*) parameterDeclarations)                       \
+                dlsym(framework##Library(), #functionName);                                        \
+            OSL_RELEASE_ASSERT(functionName##_soft_ptr != NULL,                                    \
+                "OpenSoftLinking: function %{public}s not found in %{public}s",                   \
+                #functionName, #framework);                                                        \
+        });                                                                                        \
+        return functionName##_soft_ptr parameterNames;                                             \
+    }
+
+/* Optional soft-link for a function whose presence is uncertain.
+ *
+ * Expansion creates two functions:
+ *   - canLoad_<framework>_<functionName>() -> BOOL
+ *   - <functionName>_soft(params) -> calls real fn if present; caller must
+ *     check canLoad before calling.
+ */
+#define OPEN_SOFT_LINK_MAY_FAIL(framework, functionName, resultType, parameterDeclarations, parameterNames) \
+    static resultType (*functionName##_soft_ptr) parameterDeclarations;                            \
+    static BOOL canLoad_##framework##_##functionName(void)                                         \
+    {                                                                                              \
+        static dispatch_once_t onceToken;                                                          \
+        dispatch_once(&onceToken, ^{                                                               \
+            functionName##_soft_ptr = (resultType (*) parameterDeclarations)                       \
+                dlsym(framework##Library(), #functionName);                                        \
+        });                                                                                        \
+        return functionName##_soft_ptr != NULL;                                                    \
+    }                                                                                              \
+    static resultType functionName##_soft parameterDeclarations                                    \
+    {                                                                                              \
+        return functionName##_soft_ptr parameterNames;                                             \
+    }
+
+/* Optional soft-link variant. The WebKit name kept for compatibility; the
+ * callingConvention token is accepted but not emitted (compilers infer the
+ * ABI from the function pointer type).
+ *
+ * Expansion provides only canLoad_<framework>_<functionName>() — consumers
+ * must pair it with a manual call site, e.g.:
+ *     if (canLoad_Foundation_foo()) { ... }
+ */
+#define OPEN_SOFT_LINK_OPTIONAL(framework, functionName, resultType, callingConvention, parameterDeclarations) \
+    static resultType (*functionName##_soft_ptr) parameterDeclarations;                            \
+    static BOOL canLoad_##framework##_##functionName(void)                                         \
+    {                                                                                              \
+        static dispatch_once_t onceToken;                                                          \
+        dispatch_once(&onceToken, ^{                                                               \
+            functionName##_soft_ptr = (resultType (*) parameterDeclarations)                       \
+                dlsym(framework##Library(), #functionName);                                        \
+        });                                                                                        \
+        return functionName##_soft_ptr != NULL;                                                    \
+    }
+
 /* Further macros added by subsequent tasks:
  *  - Function macros: Task 2.3
  *  - Pointer macros: Task 2.4
