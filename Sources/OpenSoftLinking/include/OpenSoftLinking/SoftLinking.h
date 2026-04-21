@@ -201,8 +201,38 @@ void *_osl_dlopen(const char *const *paths, char **errorMessage);
         return libraryHandle;                                                \
     }
 
+/* ---------------------------------------------------------------------------
+ * Class macros
+ * -------------------------------------------------------------------------*/
+
+#define OPEN_SOFT_LINK_CLASS(framework, className)                            \
+    static Class get##className##Class(void)                                  \
+    {                                                                         \
+        static Class cls;                                                     \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            (void)framework##Library();                                       \
+            cls = objc_getClass(#className);                                  \
+            OSL_RELEASE_ASSERT(cls != Nil,                                    \
+                "OpenSoftLinking: class %{public}s not found in %{public}s", \
+                #className, #framework);                                      \
+        });                                                                   \
+        return cls;                                                           \
+    }
+
+#define OPEN_SOFT_LINK_CLASS_OPTIONAL(framework, className)                   \
+    static Class get##className##Class(void)                                  \
+    {                                                                         \
+        static Class cls;                                                     \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            (void)framework##Library();                                       \
+            cls = objc_getClass(#className);                                  \
+        });                                                                   \
+        return cls;                                                           \
+    }
+
 /* Further macros added by subsequent tasks:
- *  - Class macros: Task 2.2
  *  - Function macros: Task 2.3
  *  - Pointer macros: Task 2.4
  *  - Constant macros: Task 2.5
