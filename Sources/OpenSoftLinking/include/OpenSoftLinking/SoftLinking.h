@@ -299,6 +299,37 @@ void *_osl_dlopen(const char *const *paths, char **errorMessage);
         return functionName##_soft_ptr != NULL;                                                    \
     }
 
+/* ---------------------------------------------------------------------------
+ * Pointer macros
+ * -------------------------------------------------------------------------*/
+
+#define OPEN_SOFT_LINK_POINTER(framework, name, type)                         \
+    static type get##name(void)                                               \
+    {                                                                         \
+        static __unsafe_unretained type value;                                \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            void *symbol = dlsym(framework##Library(), #name);                \
+            OSL_RELEASE_ASSERT(symbol != NULL,                                \
+                "OpenSoftLinking: pointer %{public}s not found in %{public}s", \
+                #name, #framework);                                           \
+            value = *(__unsafe_unretained type *)symbol;                      \
+        });                                                                   \
+        return value;                                                         \
+    }
+
+#define OPEN_SOFT_LINK_POINTER_OPTIONAL(framework, name, type)                \
+    static type get##name(void)                                               \
+    {                                                                         \
+        static __unsafe_unretained type value;                                \
+        static dispatch_once_t onceToken;                                     \
+        dispatch_once(&onceToken, ^{                                          \
+            void *symbol = dlsym(framework##Library(), #name);                \
+            if (symbol != NULL) { value = *(__unsafe_unretained type *)symbol; } \
+        });                                                                   \
+        return value;                                                         \
+    }
+
 /* Further macros added by subsequent tasks:
  *  - Function macros: Task 2.3
  *  - Pointer macros: Task 2.4
